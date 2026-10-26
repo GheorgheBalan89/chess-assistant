@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Chess Assistant</title>
+<meta name="theme-color" content="#1b1b1b" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Chess Assist" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="manifest" href="manifest.json" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>♞ Chess Assistant</h1>
+    <button id="menuBtn" aria-label="Settings">⚙</button>
+  </header>
+
+  <div id="panel" class="hidden">
+    <div class="row">
+      <label>Play as</label>
+      <div class="segmented" id="sideSelect">
+        <button data-side="w" class="active">White</button>
+        <button data-side="b">Black</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Engine strength</label>
+      <div class="segmented" id="strengthSelect">
+        <button data-depth="8">Fast</button>
+        <button data-depth="14" class="active">Balanced</button>
+        <button data-depth="18">Strong</button>
+      </div>
+    </div>
+    <div class="row">
+      <label for="fenInput">FEN</label>
+      <input id="fenInput" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" />
+    </div>
+    <div class="row buttons">
+      <button id="loadFenBtn">Load FEN</button>
+      <button id="copyFenBtn">Copy FEN</button>
+      <button id="resetBtn">Start Position</button>
+      <button id="flipBtn">Flip Board</button>
+    </div>
+  </div>
+
+  <nav id="tabs">
+    <button data-tab="game" class="active">Board</button>
+    <button data-tab="recent">Recent games</button>
+  </nav>
+
+  <div id="recentView" class="hidden">
+    <div id="recentList"></div>
+  </div>
+
+  <div id="gameView">
+  <div id="status"></div>
+
+  <div id="boardControls">
+    <button id="undoBtn" disabled>↩ Undo</button>
+  </div>
+
+  <div id="boardWrap">
+    <div id="board"></div>
+  </div>
+
+  <div id="suggestion">
+    <button id="suggestBtn">💡 Suggest Best Move</button>
+    <div id="suggestionResult"></div>
+  </div>
+  </div>
+
+  <div id="installHint" class="hidden">
+    Tip: tap <strong>Share ▲</strong> then <strong>Add to Home Screen</strong> to install this as an app on your iPhone.
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+</script>
+</body>
+</html>

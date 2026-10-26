@@ -1,0 +1,339 @@
+:root {
+  --bg: #1b1b1b;
+  --panel: #262626;
+  --accent: #4caf7d;
+  --light-sq: #eeeed2;
+  --dark-sq: #769656;
+  --sel: rgba(255, 220, 80, 0.55);
+  --move: rgba(80, 180, 255, 0.45);
+  --text: #f0f0f0;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  height: 100%;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+#app {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 10px calc(env(safe-area-inset-bottom) + 10px);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px;
+}
+
+header h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+#menuBtn {
+  background: var(--panel);
+  border: none;
+  color: var(--text);
+  font-size: 1.2rem;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+}
+
+#panel {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+#panel.hidden { display: none; }
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.row label {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.segmented {
+  display: flex;
+  gap: 6px;
+}
+
+.segmented button, .row.buttons button {
+  flex: 1;
+  padding: 8px 6px;
+  border: 1px solid #3a3a3a;
+  background: #333;
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.segmented button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06210f;
+  font-weight: 600;
+}
+
+.row.buttons {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+#fenInput {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #3a3a3a;
+  background: #1f1f1f;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: ui-monospace, monospace;
+}
+
+#status {
+  text-align: center;
+  min-height: 1.4em;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+#boardControls {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+#boardControls button {
+  padding: 8px 18px;
+  border: 1px solid #3a3a3a;
+  background: #333;
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+#boardControls button:disabled {
+  opacity: 0.4;
+}
+
+#boardWrap {
+  display: flex;
+  justify-content: center;
+}
+
+#board {
+  width: min(96vw, 480px);
+  height: min(96vw, 480px);
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.square {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8vw;
+  max-font-size: 40px;
+  user-select: none;
+}
+
+.square.light { background: var(--light-sq); }
+.square.dark { background: var(--dark-sq); }
+
+.square.selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sel);
+}
+
+.square.legal::after {
+  content: "";
+  position: absolute;
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.25);
+}
+
+.square.legal.capture::after {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: transparent;
+  border: 5px solid rgba(0,0,0,0.3);
+  box-sizing: border-box;
+}
+
+.square.from, .square.to {
+  box-shadow: inset 0 0 0 999px var(--move);
+}
+
+.piece {
+  font-size: 9vw;
+  line-height: 1;
+  cursor: grab;
+  z-index: 2;
+}
+
+/* Unicode chess glyphs render with the same fill color by default, which
+   makes them hard to tell apart. Force solid white-vs-black fills so each
+   side is unambiguous on any square color, with only a soft shadow (no
+   outline stroke) so the fill stays pure white / pure black. */
+.piece-white {
+  color: #ffffff;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+}
+
+.piece-black {
+  color: #000000;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+}
+
+@media (min-width: 520px) {
+  .square, .piece { font-size: 42px; }
+}
+
+.coord {
+  position: absolute;
+  font-size: 9px;
+  opacity: 0.6;
+  bottom: 1px;
+  left: 2px;
+  color: #000;
+  z-index: 1;
+}
+
+#suggestion {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+#suggestBtn {
+  background: var(--accent);
+  color: #06210f;
+  border: none;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 10px;
+  width: 100%;
+}
+
+#suggestBtn:disabled {
+  opacity: 0.6;
+}
+
+#suggestionResult {
+  text-align: center;
+  font-size: 0.95rem;
+  min-height: 1.4em;
+}
+
+#installHint {
+  margin-top: 16px;
+  font-size: 0.75rem;
+  text-align: center;
+  opacity: 0.6;
+}
+
+#tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+#tabs button {
+  flex: 1;
+  padding: 9px 6px;
+  border: 1px solid #3a3a3a;
+  background: #333;
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+#tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06210f;
+  font-weight: 600;
+}
+
+.game-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.game-item .info {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.game-item .title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.game-item .meta {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-item button {
+  padding: 8px 12px;
+  border: 1px solid #3a3a3a;
+  background: #333;
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.empty {
+  text-align: center;
+  opacity: 0.6;
+  padding: 20px;
+  font-size: 0.9rem;
+}
+
+.hidden { display: none !important; }
