@@ -1,11 +1,12 @@
 // Cache-first service worker so the app (and the on-device engine) keeps
 // working with no network connection once installed on the home screen.
-const CACHE_NAME = 'chess-assistant-v8';
+const CACHE_NAME = 'chess-assistant-v14';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './pieces.svg',
   './manifest.json',
   './lib/chess.esm.js',
   './lib/stockfish.js',

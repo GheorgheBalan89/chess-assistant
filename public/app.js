@@ -1,11 +1,6 @@
 import { Chess } from './lib/chess.esm.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const PIECE_GLYPH = {
-  w: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕', k: '♔' },
-  b: { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' },
-};
-
 const el = (id) => document.getElementById(id);
 const boardEl = el('board');
 const statusEl = el('status');
@@ -107,8 +102,13 @@ function squareName(file, rank) {
 }
 
 function renderBoard() {
-  boardEl.innerHTML = '';
-  const board = chess.board(); // board[0] = rank 8 .. board[7] = rank 1
+  drawBoard(boardEl, chess, { orientation, selected, legalTargets, lastMove }, onSquareClick);
+}
+
+function drawBoard(container, game, view, onClick) {
+  container.innerHTML = '';
+  const board = game.board(); // board[0] = rank 8 .. board[7] = rank 1
+  const { orientation, selected, legalTargets, lastMove } = view;
 
   for (let displayRow = 0; displayRow < 8; displayRow++) {
     for (let displayCol = 0; displayCol < 8; displayCol++) {
@@ -136,14 +136,18 @@ function renderBoard() {
       }
 
       if (sq) {
-        const pieceSpan = document.createElement('span');
-        pieceSpan.className = `piece ${sq.color === 'w' ? 'piece-white' : 'piece-black'}`;
-        pieceSpan.textContent = PIECE_GLYPH[sq.color][sq.type];
-        squareDiv.appendChild(pieceSpan);
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+        const pieceSvg = document.createElementNS(SVG_NS, 'svg');
+        pieceSvg.setAttribute('class', 'piece');
+        pieceSvg.setAttribute('viewBox', '0 0 45 45');
+        const use = document.createElementNS(SVG_NS, 'use');
+        use.setAttribute('href', `pieces.svg#${sq.color}${sq.type}`);
+        pieceSvg.appendChild(use);
+        squareDiv.appendChild(pieceSvg);
       }
 
-      squareDiv.addEventListener('click', () => onSquareClick(name));
-      boardEl.appendChild(squareDiv);
+      squareDiv.addEventListener('click', () => onClick(name));
+      container.appendChild(squareDiv);
     }
   }
 }
@@ -227,6 +231,15 @@ async function suggestMove() {
       lastMove = { from: result.move.from, to: result.move.to };
       const scoreText = describeScore(result.score);
       suggestionResult.textContent = `Suggested: ${sanMove ? sanMove.san : result.move.from + result.move.to}  (depth ${result.depth}, ${scoreText})`;
+      if (sanMove) {
+        addPuzzle({
+          fen,
+          bestUci: result.move.from + result.move.to + (result.move.promotion || ''),
+          bestSan: sanMove.san,
+          score: result.score,
+          depth: result.depth,
+        });
+      }
       renderBoard();
     }
   } finally {
@@ -264,52 +277,56 @@ const GAMES_KEY = 'chessAssistant.recentGames';
 const MAX_GAMES = 10;
 let currentGame = null; // { id, startFen, moves: [san], fen, orientation, updatedAt }
 
-// Games are persisted in data/games.json on the server. An in-memory cache
-// keeps the UI synchronous; localStorage is a fallback if the server is unreachable.
-let gamesCache = [];
-
-function readGames() {
-  return gamesCache;
-}
-
-function writeGames(games) {
-  gamesCache = games;
-  try {
-    localStorage.setItem(GAMES_KEY, JSON.stringify(games));
-  } catch (err) {
-    // storage unavailable or full
-  }
-  fetch('api/games', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(games),
-  }).catch(() => {});
-}
-
-async function loadGames() {
-  try {
-    const res = await fetch('api/games', { cache: 'no-store' });
-    if (res.ok) {
-      const games = await res.json();
-      if (Array.isArray(games) && games.length) {
-        gamesCache = games;
-        return;
+// Persisted lists live in data/*.json on the server. An in-memory cache keeps the
+// UI synchronous; localStorage is a fallback if the server is unreachable.
+function createStore(name, localKey) {
+  let cache = [];
+  const store = {
+    read: () => cache,
+    write(items) {
+      cache = items;
+      try {
+        localStorage.setItem(localKey, JSON.stringify(items));
+      } catch (err) {
+        // storage unavailable or full
       }
-    }
-  } catch (err) {
-    // fall through to local copy
-  }
-  try {
-    const local = JSON.parse(localStorage.getItem(GAMES_KEY));
-    if (Array.isArray(local)) {
-      gamesCache = local;
-      // push existing browser-only games up to the server (one-time migration)
-      if (local.length) writeGames(local);
-    }
-  } catch (err) {
-    gamesCache = [];
-  }
+      fetch(`api/${name}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(items),
+      }).catch(() => {});
+    },
+    async load() {
+      try {
+        const res = await fetch(`api/${name}`, { cache: 'no-store' });
+        if (res.ok) {
+          const items = await res.json();
+          if (Array.isArray(items) && items.length) {
+            cache = items;
+            return;
+          }
+        }
+      } catch (err) {
+        // fall through to local copy
+      }
+      try {
+        const local = JSON.parse(localStorage.getItem(localKey));
+        if (Array.isArray(local)) {
+          cache = local;
+          // push existing browser-only data up to the server (one-time migration)
+          if (local.length) store.write(local);
+        }
+      } catch (err) {
+        cache = [];
+      }
+    },
+  };
+  return store;
 }
+
+const gamesStore = createStore('games', GAMES_KEY);
+const readGames = gamesStore.read;
+const writeGames = gamesStore.write;
 
 function startNewGame(startFen) {
   const games = readGames();
@@ -408,11 +425,172 @@ function renderRecent() {
   }
 }
 
+// --- Puzzles: every position you asked the engine about, kept for practice ---
+
+const MAX_PUZZLES = 500;
+const puzzlesStore = createStore('puzzles', 'chessAssistant.puzzles');
+let pz = null; // active puzzle session: { puzzle, game, selected, legalTargets, lastMove, solved }
+
+function positionKey(fen) {
+  return fen.split(' ').slice(0, 4).join(' ');
+}
+
+function addPuzzle({ fen, bestUci, bestSan, score, depth }) {
+  const key = positionKey(fen);
+  const puzzles = puzzlesStore.read().slice();
+  const existing = puzzles.find((p) => p.key === key);
+  if (existing) {
+    // Same position asked again: keep the stats, refresh the answer if searched deeper.
+    if (depth >= existing.depth) Object.assign(existing, { bestUci, bestSan, score, depth, fen });
+    existing.askedCount = (existing.askedCount || 1) + 1;
+    puzzlesStore.write(puzzles);
+    return;
+  }
+  puzzles.unshift({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    key,
+    fen,
+    bestUci,
+    bestSan,
+    score,
+    depth,
+    createdAt: Date.now(),
+    askedCount: 1,
+    attempts: 0,
+    solved: 0,
+    lastPracticedAt: null,
+  });
+  puzzlesStore.write(puzzles.slice(0, MAX_PUZZLES));
+}
+
+function updatePuzzle(id, patch) {
+  const puzzles = puzzlesStore.read().map((p) => (p.id === id ? { ...p, ...patch } : p));
+  puzzlesStore.write(puzzles);
+  if (pz && pz.puzzle.id === id) pz.puzzle = { ...pz.puzzle, ...patch };
+}
+
+function renderPuzzleList() {
+  const list = el('puzzleList');
+  list.innerHTML = '';
+  const puzzles = puzzlesStore.read();
+  if (!puzzles.length) {
+    list.innerHTML = '<div class="empty">No puzzles yet. Positions where you tap “Suggest Best Move” are added here automatically.</div>';
+    return;
+  }
+  for (const p of puzzles) {
+    const item = document.createElement('div');
+    item.className = 'game-item';
+    const info = document.createElement('div');
+    info.className = 'info';
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = `${p.fen.split(' ')[1] === 'w' ? 'White' : 'Black'} to move`;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = `${new Date(p.createdAt).toLocaleDateString()} · solved ${p.solved}/${p.attempts} tries`;
+    info.append(title, meta);
+    info.addEventListener('click', () => openPuzzle(p.id));
+    const open = document.createElement('button');
+    open.textContent = 'Solve';
+    open.addEventListener('click', () => openPuzzle(p.id));
+    const del = document.createElement('button');
+    del.textContent = '🗑';
+    del.setAttribute('aria-label', 'Delete puzzle');
+    del.addEventListener('click', () => {
+      puzzlesStore.write(puzzlesStore.read().filter((x) => x.id !== p.id));
+      renderPuzzleList();
+    });
+    item.append(info, open, del);
+    list.appendChild(item);
+  }
+}
+
+function drawPuzzle() {
+  drawBoard(el('puzzleBoard'), pz.game, {
+    orientation: pz.puzzle.fen.split(' ')[1],
+    selected: pz.selected,
+    legalTargets: pz.legalTargets,
+    lastMove: pz.lastMove,
+  }, onPuzzleSquareClick);
+}
+
+function openPuzzle(id) {
+  const puzzle = puzzlesStore.read().find((p) => p.id === id);
+  if (!puzzle) return;
+  pz = { puzzle, game: new Chess(puzzle.fen), selected: null, legalTargets: [], lastMove: null, solved: false };
+  el('puzzleList').classList.add('hidden');
+  el('puzzleSolve').classList.remove('hidden');
+  el('puzzleStatus').textContent = `Find the best move for ${puzzle.fen.split(' ')[1] === 'w' ? 'White' : 'Black'}.`;
+  el('puzzleShowBtn').disabled = false;
+  drawPuzzle();
+}
+
+function closePuzzle() {
+  pz = null;
+  el('puzzleSolve').classList.add('hidden');
+  el('puzzleList').classList.remove('hidden');
+  renderPuzzleList();
+}
+
+function onPuzzleSquareClick(name) {
+  if (!pz || pz.solved) return;
+  const game = pz.game;
+
+  if (pz.selected) {
+    const move = pz.legalTargets.find((m) => m.to === name);
+    if (move) {
+      const attempt = pz.puzzle.bestUci.slice(0, 4) === move.from + move.to;
+      pz.selected = null;
+      pz.legalTargets = [];
+      if (attempt) {
+        game.move({ from: move.from, to: move.to, promotion: pz.puzzle.bestUci[4] || move.promotion || 'q' });
+        pz.lastMove = { from: move.from, to: move.to };
+        pz.solved = true;
+        el('puzzleStatus').textContent = `Correct! ${pz.puzzle.bestSan} ✓`;
+        el('puzzleShowBtn').disabled = true;
+        updatePuzzle(pz.puzzle.id, {
+          attempts: pz.puzzle.attempts + 1,
+          solved: pz.puzzle.solved + 1,
+          lastPracticedAt: Date.now(),
+        });
+      } else {
+        el('puzzleStatus').textContent = 'Not the best move — try again.';
+        updatePuzzle(pz.puzzle.id, { attempts: pz.puzzle.attempts + 1, lastPracticedAt: Date.now() });
+      }
+      drawPuzzle();
+      return;
+    }
+  }
+
+  const piece = game.get(name);
+  if (piece && piece.color === game.turn()) {
+    pz.selected = name;
+    pz.legalTargets = game.moves({ square: name, verbose: true });
+  } else {
+    pz.selected = null;
+    pz.legalTargets = [];
+  }
+  drawPuzzle();
+}
+
+el('puzzleShowBtn').addEventListener('click', () => {
+  if (!pz || pz.solved) return;
+  const uci = pz.puzzle.bestUci;
+  pz.lastMove = { from: uci.slice(0, 2), to: uci.slice(2, 4) };
+  pz.selected = null;
+  pz.legalTargets = [];
+  el('puzzleStatus').textContent = `Solution: ${pz.puzzle.bestSan}`;
+  drawPuzzle();
+});
+el('puzzleBackBtn').addEventListener('click', closePuzzle);
+
 function showTab(tab) {
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   el('gameView').classList.toggle('hidden', tab !== 'game');
   el('recentView').classList.toggle('hidden', tab !== 'recent');
+  el('puzzlesView').classList.toggle('hidden', tab !== 'puzzles');
   if (tab === 'recent') renderRecent();
+  if (tab === 'puzzles') closePuzzle();
 }
 
 el('tabs').addEventListener('click', (e) => {
@@ -471,7 +649,7 @@ if (!window.navigator.standalone) {
   el('installHint').classList.remove('hidden');
 }
 
-await loadGames();
+await Promise.all([gamesStore.load(), puzzlesStore.load()]);
 const savedGames = readGames();
 if (savedGames.length) openGame(savedGames[0].id);
 else loadFen(START_FEN);

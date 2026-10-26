@@ -50,7 +50,20 @@
   <nav id="tabs">
     <button data-tab="game" class="active">Board</button>
     <button data-tab="recent">Recent games</button>
+    <button data-tab="puzzles">Puzzles</button>
   </nav>
+
+  <div id="puzzlesView" class="hidden">
+    <div id="puzzleList"></div>
+    <div id="puzzleSolve" class="hidden">
+      <div id="puzzleStatus"></div>
+      <div class="boardControls">
+        <button id="puzzleBackBtn">← Back</button>
+        <button id="puzzleShowBtn">Show solution</button>
+      </div>
+      <div class="boardWrap"><div id="puzzleBoard"></div></div>
+    </div>
+  </div>
 
   <div id="recentView" class="hidden">
     <div id="recentList"></div>

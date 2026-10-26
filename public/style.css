@@ -112,7 +112,7 @@ header h1 {
   font-family: ui-monospace, monospace;
 }
 
-#status {
+#status, #puzzleStatus {
   text-align: center;
   min-height: 1.4em;
   margin-bottom: 6px;
@@ -120,13 +120,14 @@ header h1 {
   opacity: 0.9;
 }
 
-#boardControls {
+#boardControls, .boardControls {
   display: flex;
   justify-content: center;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
-#boardControls button {
+#boardControls button, .boardControls button {
   padding: 8px 18px;
   border: 1px solid #3a3a3a;
   background: #333;
@@ -135,16 +136,16 @@ header h1 {
   font-size: 0.9rem;
 }
 
-#boardControls button:disabled {
+#boardControls button:disabled, .boardControls button:disabled {
   opacity: 0.4;
 }
 
-#boardWrap {
+#boardWrap, .boardWrap {
   display: flex;
   justify-content: center;
 }
 
-#board {
+#board, #puzzleBoard {
   width: min(96vw, 480px);
   height: min(96vw, 480px);
   display: grid;
@@ -198,28 +199,10 @@ header h1 {
 }
 
 .piece {
-  font-size: 9vw;
-  line-height: 1;
-  cursor: grab;
+  width: 92%;
+  height: 92%;
+  pointer-events: none;
   z-index: 2;
-}
-
-/* Unicode chess glyphs render with the same fill color by default, which
-   makes them hard to tell apart. Force solid white-vs-black fills so each
-   side is unambiguous on any square color, with only a soft shadow (no
-   outline stroke) so the fill stays pure white / pure black. */
-.piece-white {
-  color: #ffffff;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
-}
-
-.piece-black {
-  color: #000000;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
-}
-
-@media (min-width: 520px) {
-  .square, .piece { font-size: 42px; }
 }
 
 .coord {
