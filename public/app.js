@@ -158,10 +158,18 @@ function onSquareClick(name) {
   if (selected) {
     const move = legalTargets.find((m) => m.to === name);
     if (move) {
-      applyMove(move);
-      selected = null;
-      legalTargets = [];
-      renderBoard();
+      const from = move.from;
+      const finish = (promotion) => {
+        applyMove({ from, to: name, promotion });
+        selected = null;
+        legalTargets = [];
+        renderBoard();
+      };
+      if (move.isPromotion()) {
+        askPromotion(chess.turn()).then((p) => { if (p) finish(p); });
+      } else {
+        finish(undefined);
+      }
       return;
     }
   }
@@ -177,9 +185,29 @@ function onSquareClick(name) {
   renderBoard();
 }
 
+function askPromotion(color) {
+  return new Promise((resolve) => {
+    const modal = el('promoModal');
+    const choices = el('promoChoices');
+    choices.textContent = '';
+    const close = (value) => {
+      modal.classList.add('hidden');
+      resolve(value);
+    };
+    for (const type of ['q', 'r', 'n', 'b']) {
+      const btn = document.createElement('button');
+      btn.className = 'promoChoice';
+      btn.setAttribute('aria-label', { q: 'Queen', r: 'Rook', n: 'Knight', b: 'Bishop' }[type]);
+      btn.innerHTML = `<svg viewBox="0 0 45 45"><use href="pieces.svg#${color}${type}"></use></svg>`;
+      btn.addEventListener('click', () => close(type));
+      choices.appendChild(btn);
+    }
+    el('promoCancel').onclick = () => close(null);
+    modal.classList.remove('hidden');
+  });
+}
+
 function applyMove(move) {
-  // Auto-promote to queen; chess.js requires a promotion piece for pawns
-  // reaching the last rank even if multiple options exist in the move list.
   const result = chess.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' });
   if (!result) return;
   lastMove = { from: result.from, to: result.to };

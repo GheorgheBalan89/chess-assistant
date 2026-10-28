@@ -198,6 +198,41 @@ header h1 {
   box-shadow: inset 0 0 0 999px var(--move);
 }
 
+#promoModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+#promoBox {
+  background: var(--panel);
+  color: var(--text);
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+#promoTitle { margin-bottom: 12px; font-weight: 600; }
+
+#promoChoices { display: flex; gap: 8px; margin-bottom: 12px; }
+
+.promoChoice {
+  width: 64px;
+  height: 64px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: var(--light-sq);
+  cursor: pointer;
+}
+
+.promoChoice:hover { border-color: var(--accent); }
+.promoChoice svg { width: 100%; height: 100%; pointer-events: none; }
+
 .piece {
   width: 92%;
   height: 92%;
